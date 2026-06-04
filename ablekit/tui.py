@@ -108,7 +108,6 @@ class ConvertScreen(ModalScreen):
         margin-top: 1;
         height: auto;
         color: $text-muted;
-        text-align: center;
     }
     """
 
@@ -216,9 +215,11 @@ class ConvertScreen(ModalScreen):
             self.query_one('#convert-dest', Label).update(
                 f'in {lib}:\n  kits  -> {kits_rel}\n  loops -> {loops_rel}')
             self.query_one('#convert-hint', Label).update(
-                'In Live: kits under Browser → User Library → Presets → Instruments'
-                ' → Drum Rack → Ablekit; loops under Samples → Imported → Ablekit.'
-                ' Press any key to close.'
+                "In Live's browser (User Library):\n"
+                '  kits  -> Presets → Instruments → Drum Rack → Ablekit\n'
+                '  loops -> Samples → Imported → Ablekit → <expansion> → Loops\n'
+                '\n'
+                'press any key to close'
             )
         self.done = True
 
