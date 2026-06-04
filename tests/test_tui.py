@@ -225,3 +225,32 @@ async def test_tui_convert_shows_destination(fake_expansion: Path, tmp_path: Pat
                 break
         dest = app.screen.query_one('#convert-dest')
         assert 'Drum Rack/Ablekit/Test Library' in str(dest.content)
+
+
+async def test_tui_selection_survives_expansion_switch(tmp_path: Path):
+    # Build TWO fake expansions under one root.
+    for name, kit in (('A Library', 'Akka Kit'), ('B Library', 'Boko Kit')):
+        root = tmp_path / name
+        (root / 'Groups' / 'Kits').mkdir(parents=True)
+        (root / 'Groups' / 'Kits' / f'{kit}.mxgrp').write_bytes(b'\x00')
+        d = root / 'Samples' / 'Drums' / 'Kick'
+        d.mkdir(parents=True)
+        token = kit.replace(' Kit', '').replace(' ', '')
+        (d / f'Kick {token} 1.wav').write_bytes(b'RIFF')
+    app = AblekitApp(root=tmp_path)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press('right')      # focus kits
+        await pilot.press('space')      # select kit in expansion A
+        assert len(app.selected) == 1
+        await pilot.press('left')       # back to expansions
+        await pilot.press('down')       # switch to B Library
+        await pilot.pause()
+        assert len(app.selected) == 0   # B has its own empty selection
+        await pilot.press('up')         # back to A
+        await pilot.pause()
+        assert len(app.selected) == 1   # A's selection restored
+        # restored mark visible in table
+        from textual.coordinate import Coordinate
+        table = app.query_one('#kits')
+        assert table.get_cell_at(Coordinate(0, 0)) == 'x'

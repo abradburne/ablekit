@@ -259,8 +259,22 @@ class AblekitApp(App):
         self.user_library = user_library
         self.expansions: list[Expansion] = []
         self.kits: list[Kit] = []
-        self.selected: set[str] = set()   # kit names within current expansion
+        self._selections: dict[str, set[str]] = {}  # expansion name → selected kit names
         self.current: Expansion | None = None
+
+    @property
+    def selected(self) -> set[str]:
+        """Return the live selection set for the current expansion."""
+        if self.current is None:
+            return set()
+        return self._selections.setdefault(self.current.name, set())
+
+    @selected.setter
+    def selected(self, value: set[str]) -> None:
+        """Assign a new selection set for the current expansion."""
+        if self.current is None:
+            return
+        self._selections[self.current.name] = value
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -279,13 +293,17 @@ class AblekitApp(App):
         for exp in self.expansions:
             lv.append(ListItem(Label(f'{exp.name} ({len(exp.kit_names)} kits)')))
         if self.expansions:
+            lv.index = 0
             self.show_expansion(self.expansions[0])
 
     def show_expansion(self, exp: Expansion) -> None:
         self.current = exp
-        self.selected.clear()
         self.kits, _, _ignored, _fuzzy = match_expansion(exp)
         self.refresh_kit_table()
+        n = len(self.selected)
+        if n:
+            status = f'{n} kit{"s" if n != 1 else ""} selected'
+            self.query_one('#status', Label).update(status)
 
     def refresh_kit_table(self) -> None:
         table = self.query_one('#kits', DataTable)
