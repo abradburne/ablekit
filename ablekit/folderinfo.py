@@ -11,8 +11,9 @@ from .models import Role
 FOLDER_INFO_DIR = 'Ableton Folder Info'
 XMP_NAME = 'dc66a3fa-0fe1-5352-91cf-3ec237e9ee90.xmp'
 
+NI_TAG = 'Creator|Native Instruments'
 CREATOR_TAG = 'Creator|Ablekit'
-KIT_TAGS = ['Drums|Drum Kit|Hybrid Kit', CREATOR_TAG]
+KIT_TAGS = ['Drums|Drum Kit|Hybrid Kit', NI_TAG, CREATOR_TAG]
 
 ROLE_TAGS: dict[Role, str] = {
     Role.KICK: 'Drums|Kick',
@@ -34,6 +35,7 @@ def sample_tags(role: Role) -> list[str]:
     if role in ROLE_TAGS:
         tags.append(ROLE_TAGS[role])
     tags.append('Type|Loop' if role is Role.LOOP else 'Type|One Shot')
+    tags.append(NI_TAG)
     tags.append(CREATOR_TAG)
     return tags
 

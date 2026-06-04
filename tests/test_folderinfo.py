@@ -12,9 +12,9 @@ NS = {
 
 
 def test_sample_tags_by_role():
-    assert sample_tags(Role.KICK) == ['Drums|Kick', 'Type|One Shot', 'Creator|Ablekit']
-    assert sample_tags(Role.LOOP) == ['Type|Loop', 'Creator|Ablekit']
-    assert sample_tags(Role.TONAL) == ['Type|One Shot', 'Creator|Ablekit']
+    assert sample_tags(Role.KICK) == ['Drums|Kick', 'Type|One Shot', 'Creator|Native Instruments', 'Creator|Ablekit']
+    assert sample_tags(Role.LOOP) == ['Type|Loop', 'Creator|Native Instruments', 'Creator|Ablekit']
+    assert sample_tags(Role.TONAL) == ['Type|One Shot', 'Creator|Native Instruments', 'Creator|Ablekit']
     assert sample_tags(Role.CLOSED_HH)[0] == 'Drums|Hihat|Closed Hihat'
 
 

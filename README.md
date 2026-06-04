@@ -93,9 +93,8 @@ searchable and filterable in Live's browser:
 - **Loops** get `Type → Loop` and, when a key is detected in the filename,
   `Key → <note>` (plus `Key → Minor` for minor-mode loops). They live in their
   own `Loops/<Kit>/` folder — see Construction loops above.
-- **Everything** gets `Creator → Ablekit`, so you can filter for all ablekit
-  output in one click (Instruments and Samples browser → filter by Creator →
-  Ablekit).
+- **Everything** gets `Creator → Native Instruments` (content author) and
+  `Creator → Ablekit` (converter — one-click filter for all ablekit output).
 
 ## Notes
 

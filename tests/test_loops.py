@@ -115,6 +115,7 @@ def test_install_loops_writes_sidecar_with_type_loop(tmp_path: Path):
     assert sidecar.exists()
     content = sidecar.read_text()
     assert 'Type|Loop' in content
+    assert 'Creator|Native Instruments' in content
     assert 'Creator|Ablekit' in content
     assert 'Key|E' in content
 

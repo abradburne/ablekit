@@ -11,7 +11,7 @@ import re
 import shutil
 from pathlib import Path
 
-from .folderinfo import CREATOR_TAG, write_folder_info
+from .folderinfo import CREATOR_TAG, NI_TAG, write_folder_info
 from .models import Sample
 
 # Matches the mandatory '<Part>[<bpm>]' prefix of a loop stem.
@@ -20,7 +20,7 @@ _BPM_RE = re.compile(r'^([A-Za-z]+)\[(\d+)\]\s*(.*)', re.DOTALL)
 # Matches an optional key token: single letter A-G, optional accidental, optional minor 'm'.
 _KEY_RE = re.compile(r'^[A-G](#|b)?m?$')
 
-_LOOP_TAGS_BASE = ['Type|Loop', CREATOR_TAG]
+_LOOP_TAGS_BASE = ['Type|Loop', NI_TAG, CREATOR_TAG]
 
 
 def _kit_base(kit_name: str) -> str:
