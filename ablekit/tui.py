@@ -20,31 +20,25 @@ from .scanner import SHARED, discover
 _HELP_TEXT = """\
 ablekit — Maschine expansions → Ableton drum racks
 
-Navigation
-  ←/→        switch pane (expansions / kits)
-  ↑/↓        move cursor
-  enter      kit detail: pad layout preview (esc to go back)
-  tab        cycle focus
+Navigation                              Selection
+  ←/→     switch pane                     space   select/deselect kit
+  ↑/↓     move cursor                     a       select all kits
+  enter   kit detail (esc back)
+  tab     cycle focus                   Convert
+                                          c       convert selected kits
+Other                                             (cursor kit if none)
+  ?       this help                       d       dry run (writes nothing)
+  q       quit
 
-Selection
-  space      select/deselect kit under cursor
-  a          select all kits in expansion
+Output — inside your User Library
+  kits     Presets/Instruments/Drum Rack/Ablekit/<expansion>/
+  samples  Samples/Imported/Ablekit/<expansion>/<kit>/
+  loops    Samples/Imported/Ablekit/<expansion>/Loops/<kit>/
+           renamed '<Kit> <Part> <n> <Key> <BPM>bpm.wav' → Live auto-warps
 
-Convert
-  c          convert selected kits (or kit under cursor if none selected)
-  d          dry run — show what would be created, write nothing
-
-Output
-  Kits   -> User Library/Presets/Instruments/Drum Rack/Ablekit/<expansion>/
-  Samples-> User Library/Samples/Imported/Ablekit/<expansion>/<kit>/
-  Loops  -> User Library/Samples/Imported/Ablekit/<expansion>/Loops/<kit>/
-           renamed '<Kit> <Part> <n> <Key> <BPM>bpm.wav' so Live auto-warps
-  Live: kits under Browser -> User Library -> Presets -> Instruments
-        -> Drum Rack -> Ablekit; loops under Samples -> Imported -> Ablekit
-
-Other
-  ?          this help
-  q          quit\
+Find in Live's browser
+  kits     User Library → Presets → Instruments → Drum Rack → Ablekit
+  loops    User Library → Samples → Imported → Ablekit → <expansion> → Loops\
 """
 
 
@@ -56,7 +50,8 @@ class HelpScreen(ModalScreen):
         align: center middle;
     }
     #help-panel {
-        width: 64;
+        width: 84;
+        max-width: 95%;
         height: auto;
         border: solid $accent;
         padding: 1 2;
