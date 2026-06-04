@@ -254,3 +254,39 @@ async def test_tui_selection_survives_expansion_switch(tmp_path: Path):
         from textual.coordinate import Coordinate
         table = app.query_one('#kits')
         assert table.get_cell_at(Coordinate(0, 0)) == 'x'
+
+
+async def test_tui_convert_includes_selections_from_other_expansions(tmp_path: Path):
+    # two expansions, select one kit in each, convert from the second
+    for name, kit in (('A Library', 'Akka Kit'), ('B Library', 'Boko Kit')):
+        root = tmp_path / name
+        (root / 'Groups' / 'Kits').mkdir(parents=True)
+        (root / 'Groups' / 'Kits' / f'{kit}.mxgrp').write_bytes(b'\x00')
+        d = root / 'Samples' / 'Drums' / 'Kick'
+        d.mkdir(parents=True)
+        token = kit.replace(' Kit', '').replace(' ', '')
+        (d / f'Kick {token} 1.wav').write_bytes(b'RIFF')
+    lib = tmp_path / 'lib'
+    app = AblekitApp(root=tmp_path, user_library=lib)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press('right')      # kits of A
+        await pilot.press('space')      # select Akka
+        await pilot.press('left')
+        await pilot.press('down')       # B Library
+        await pilot.pause()
+        await pilot.press('right')
+        await pilot.press('space')      # select Boko
+        await pilot.press('c')          # convert → BOTH kits
+        from ablekit.tui import ConvertScreen
+        assert isinstance(app.screen, ConvertScreen)
+        for _ in range(60):
+            await pilot.pause(0.05)
+            if app.screen.done:
+                break
+        assert app.screen.done
+        assert (lib / 'Presets/Instruments/Drum Rack/Ablekit/A Library/Akka Kit.adg').exists()
+        assert (lib / 'Presets/Instruments/Drum Rack/Ablekit/B Library/Boko Kit.adg').exists()
+        await pilot.press('enter')
+        # selections cleared after successful convert
+        assert len(app.selected) == 0

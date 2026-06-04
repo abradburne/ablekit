@@ -74,7 +74,7 @@ def kit_summary(kit: Kit) -> str:
 
 
 class ConvertScreen(ModalScreen):
-    """Progress modal for converting kits in an expansion."""
+    """Progress modal for converting kits across one or more expansions."""
 
     CSS = """
     ConvertScreen {
@@ -109,23 +109,26 @@ class ConvertScreen(ModalScreen):
 
     def __init__(
         self,
-        expansion: Expansion,
-        kit_names: list[str],
+        jobs: list[tuple[Expansion, list[str]]],
         user_library: Path,
         dry_run: bool,
     ) -> None:
         super().__init__()
-        self.expansion = expansion
-        self.kit_names = kit_names
+        self.jobs = jobs
         self.user_library = user_library
         self.dry_run = dry_run
         self.done: bool = False
 
     def compose(self) -> ComposeResult:
         verb = 'Dry run' if self.dry_run else 'Converting'
+        if len(self.jobs) == 1:
+            title = f'{verb}: {self.jobs[0][0].name}'
+        else:
+            title = f'{verb}: {len(self.jobs)} expansions'
+        total_kits = sum(len(kit_names) for _, kit_names in self.jobs)
         with Vertical(id='convert-panel'):
-            yield Label(f'{verb}: {self.expansion.name}', id='convert-title')
-            yield ProgressBar(total=len(self.kit_names), show_eta=False, id='convert-progress')
+            yield Label(title, id='convert-title')
+            yield ProgressBar(total=total_kits, show_eta=False, id='convert-progress')
             yield Label('', id='convert-log')
             yield Label('', id='convert-summary')
             yield Label('', id='convert-dest')
@@ -138,28 +141,41 @@ class ConvertScreen(ModalScreen):
         def on_progress(kit_name: str) -> None:
             self.app.call_from_thread(self._advance, kit_name)
 
-        result = convert_expansion(
-            self.expansion,
-            user_library=self.user_library,
-            dry_run=self.dry_run,
-            only_kits=set(self.kit_names),
-            progress=on_progress,
-        )
+        # Aggregate results across all jobs.
+        all_kits: list = []
+        all_skipped: list[str] = []
+        all_unmatched: list[Path] = []
+        all_ignored: int = 0
+        all_fuzzy: list = []
+
+        for expansion, kit_names in self.jobs:
+            result = convert_expansion(
+                expansion,
+                user_library=self.user_library,
+                dry_run=self.dry_run,
+                only_kits=set(kit_names),
+                progress=on_progress,
+            )
+            all_kits.extend(result.kits)
+            all_skipped.extend(result.skipped)
+            all_unmatched.extend(result.unmatched)
+            all_ignored += result.ignored
+            all_fuzzy.extend(result.fuzzy)
 
         verb = 'would create' if self.dry_run else 'created'
-        total_loops = sum(r.loops for r in result.kits)
+        total_loops = sum(r.loops for r in all_kits)
         parts = [
-            f'{verb} {len(result.kits)} kits ({total_loops} loops)',
-            f'skipped {len(result.skipped)}',
+            f'{verb} {len(all_kits)} kits ({total_loops} loops)',
+            f'skipped {len(all_skipped)}',
         ]
-        if result.unmatched:
-            parts.append(f'unmatched {len(result.unmatched)}')
-        if result.ignored:
-            parts.append(f'ignored {result.ignored}')
-        if result.fuzzy:
-            parts.append(f'fuzzy {len(result.fuzzy)}')
+        if all_unmatched:
+            parts.append(f'unmatched {len(all_unmatched)}')
+        if all_ignored:
+            parts.append(f'ignored {all_ignored}')
+        if all_fuzzy:
+            parts.append(f'fuzzy {len(all_fuzzy)}')
         summary = ', '.join(parts)
-        self.app.call_from_thread(self._finish, summary, result.unmatched)
+        self.app.call_from_thread(self._finish, summary, all_unmatched)
 
     def _advance(self, kit_name: str) -> None:
         self.query_one('#convert-log', Label).update(kit_name)
@@ -178,25 +194,40 @@ class ConvertScreen(ModalScreen):
         if self.dry_run:
             self.query_one('#convert-dest', Label).update('(dry run — nothing written)')
             self.query_one('#convert-hint', Label).update('press any key to close')
-        else:
+        elif len(self.jobs) == 1:
+            expansion = self.jobs[0][0]
             kits_dest = (
                 self.user_library
                 / 'Presets'
                 / 'Instruments'
                 / 'Drum Rack'
                 / 'Ablekit'
-                / self.expansion.name
+                / expansion.name
             )
             loops_dest = (
                 self.user_library
                 / 'Samples'
                 / 'Imported'
                 / 'Ablekit'
-                / self.expansion.name
+                / expansion.name
                 / 'Loops'
             )
             self.query_one('#convert-dest', Label).update(
                 f'kits  -> {kits_dest}\nloops -> {loops_dest}')
+            self.query_one('#convert-hint', Label).update(
+                'In Live: kits under Browser → User Library → Presets → Instruments'
+                ' → Drum Rack → Ablekit; loops under Samples → Imported → Ablekit.'
+                ' Press any key to close.'
+            )
+        else:
+            kits_dest = (
+                self.user_library / 'Presets' / 'Instruments' / 'Drum Rack' / 'Ablekit'
+            )
+            loops_dest = (
+                self.user_library / 'Samples' / 'Imported' / 'Ablekit'
+            )
+            self.query_one('#convert-dest', Label).update(
+                f'kits  -> {kits_dest}/\nloops -> {loops_dest}/')
             self.query_one('#convert-hint', Label).update(
                 'In Live: kits under Browser → User Library → Presets → Instruments'
                 ' → Drum Rack → Ablekit; loops under Samples → Imported → Ablekit.'
@@ -385,27 +416,50 @@ class AblekitApp(App):
         if self.current is None:
             self.query_one('#status', Label).update('nothing to convert')
             return
+
+        # Gather selections across ALL expansions (intersect with actual kit names
+        # for safety against stale entries).
+        exp_by_name = {exp.name: exp for exp in self.expansions}
+        jobs: list[tuple[Expansion, list[str]]] = []
+        converted_exp_names: list[str] = []
+        for exp_name, sel_set in self._selections.items():
+            if not sel_set:
+                continue
+            exp = exp_by_name.get(exp_name)
+            if exp is None:
+                continue
+            valid_names = sorted(sel_set & set(exp.kit_names))
+            if valid_names:
+                jobs.append((exp, valid_names))
+                converted_exp_names.append(exp_name)
+
         table = self.query_one('#kits', DataTable)
-        if self.selected:
-            names = sorted(self.selected)
-        elif self.focused is table:
-            # No explicit selection: convert only the kit under the cursor.
-            kit = self._cursor_kit()
-            names = [kit.name] if kit and kit.samples else []
-        else:
-            # Kits table is not focused and nothing is selected — guide the user.
-            self.query_one('#status', Label).update(
-                'no kits selected — space to select, a for all'
-            )
-            return
-        if not names:
+        if not jobs:
+            if self.focused is table:
+                # No explicit selection: convert only the kit under the cursor.
+                kit = self._cursor_kit()
+                if kit and kit.samples:
+                    jobs = [(self.current, [kit.name])]
+            else:
+                # Kits table is not focused and nothing is selected — guide the user.
+                self.query_one('#status', Label).update(
+                    'no kits selected — space to select, a for all'
+                )
+                return
+
+        if not jobs:
             self.query_one('#status', Label).update('nothing to convert')
             return
 
         def on_dismiss(summary: str | None) -> None:
+            # Clear selections for all converted expansions and refresh the table.
+            for exp_name in converted_exp_names:
+                if exp_name in self._selections:
+                    self._selections[exp_name].clear()
+            self.refresh_kit_table()
             self.query_one('#status', Label).update(summary or 'ready')
 
-        screen = ConvertScreen(self.current, names, self.user_library, dry_run)
+        screen = ConvertScreen(jobs, self.user_library, dry_run)
         self.push_screen(screen, on_dismiss)
 
 
