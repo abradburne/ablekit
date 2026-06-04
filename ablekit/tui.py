@@ -83,6 +83,8 @@ class ConvertScreen(ModalScreen):
     #convert-panel {
         width: 80;
         height: auto;
+        max-height: 90%;
+        overflow-y: auto;
         border: solid $accent;
         padding: 1 2;
     }
@@ -92,9 +94,11 @@ class ConvertScreen(ModalScreen):
     }
     #convert-log {
         margin-top: 1;
+        height: auto;
     }
     #convert-summary {
         margin-top: 1;
+        height: auto;
     }
     #convert-dest {
         margin-top: 1;
@@ -102,6 +106,7 @@ class ConvertScreen(ModalScreen):
     }
     #convert-hint {
         margin-top: 1;
+        height: auto;
         color: $text-muted;
         text-align: center;
     }
