@@ -80,22 +80,22 @@ def test_natural_sort_picks_kick_2_before_kick_10():
     assert notes[36].sample.pad_name == 'Kick 2'
 
 
-def test_tonals_and_loops_go_above_grid_never_backfill():
+def test_tonals_go_above_grid_never_backfill():
     pads, _ = assign_pads([
         s('Kick 1', Role.KICK),
         s('Synth C', Role.TONAL),
-        s('Drums[115] 1', Role.LOOP),
+        s('Synth D', Role.TONAL),
     ])
     notes = by_note(pads)
     assert notes[36].sample.pad_name == 'Kick 1'
     assert notes[52].sample.pad_name == 'Synth C'
-    assert notes[53].sample.pad_name == 'Drums[115] 1'
+    assert notes[53].sample.pad_name == 'Synth D'
     assert 37 not in notes
 
 
 def test_overflow_past_127_is_dropped():
-    many = [s(f'Loop {i:03d}', Role.LOOP) for i in range(80)]
+    many = [s(f'Tonal {i:03d}', Role.TONAL) for i in range(80)]
     pads, dropped = assign_pads([s('Kick 1', Role.KICK)] + many)
     assert max(p.note for p in pads) == 127
-    # notes 52..127 hold 76 loops; 4 dropped
+    # notes 52..127 hold 76 tonals; 4 dropped
     assert len(dropped) == 4

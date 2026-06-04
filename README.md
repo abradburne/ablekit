@@ -114,4 +114,4 @@ searchable and filterable in Live's browser:
 ## Development
 
     uv sync
-    uv run pytest          # 86 tests incl. real-data integration (needs Polar Flare installed)
+    uv run pytest          # 87 tests incl. real-data integration (needs Polar Flare installed)

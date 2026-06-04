@@ -26,7 +26,8 @@ def natural_key(text: str) -> list:
 
 
 def assign_pads(samples: list[Sample]) -> tuple[list[Pad], list[Sample]]:
-    """Map a kit's samples to drum rack notes. Returns (pads, dropped)."""
+    """Map a kit's samples to drum rack notes. Returns (pads, dropped).
+    Note: loops are filtered out upstream by convert.py before calling this."""
     def named(role: Role) -> list[Sample]:
         return sorted((s for s in samples if s.role is role),
                       key=lambda s: natural_key(s.pad_name))
@@ -57,8 +58,9 @@ def assign_pads(samples: list[Sample]) -> tuple[list[Pad], list[Sample]]:
         else:
             place_above(sample)
 
-    # tonal one-shots then loops: always above the drum grid
-    for sample in named(Role.TONAL) + named(Role.LOOP):
+    # tonal one-shots: always above the drum grid
+    # (loops are filtered out upstream by convert.py)
+    for sample in named(Role.TONAL):
         place_above(sample)
 
     result = [Pad(note=n, sample=s, choke=1 if s.role in HH_ROLES else 0)

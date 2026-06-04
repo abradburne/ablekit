@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 import pytest
@@ -152,20 +151,18 @@ def test_install_loops_dedup_collision(tmp_path: Path):
     """Two loops that would rename to the same filename get deduplicated."""
     src_dir = tmp_path / 'src'
     src_dir.mkdir()
-    # Both strip to the same output name — simulate by having two identically-named sources
-    # (This won't happen with real NI data but tests the dedup logic.)
+    # Create two loops with the same parsed name (case variant) but different source paths
     loop1 = _make_loop_sample(src_dir, 'Drums[115] Akka 1.wav')
-    loop2_path = src_dir / 'Drums[115] Akka 1_copy.wav'
-    loop2_path.write_bytes(b'RIFF')
-    loop2 = Sample(path=loop2_path, role=Role.LOOP, pad_name='Drums[115] Akka 1_copy')
+    loop2 = _make_loop_sample(src_dir, 'Drums[115] AKKA 1.wav')  # case variant, same parsed name
 
     lib = tmp_path / 'lib'
-    # Both produce 'Akka Drums 1 115bpm.wav'; second must get a suffix
-    # For this we give loop2 the same stem as loop1 after renaming:
-    # Actually let's test with truly identical stems — use monkeypatching via stem override
-    # Simpler: just install two loops that produce distinct names and verify count
+    # Both produce 'Akka Drums 1 115bpm.wav'; second must get a suffix like '_2'
     count = install_loops('Test Library', 'Akka Kit', [loop1, loop2], lib, dry_run=False)
     assert count == 2
+
+    loops_dir = lib / 'Samples' / 'Imported' / 'Ablekit' / 'Test Library' / 'Loops' / 'Akka'
+    files = sorted([f.name for f in loops_dir.iterdir() if f.is_file()])
+    assert files == ['Akka Drums 1 115bpm 2.wav', 'Akka Drums 1 115bpm.wav']
 
 
 def test_install_loops_empty_list_returns_zero(tmp_path: Path):
