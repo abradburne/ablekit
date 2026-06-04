@@ -4,8 +4,10 @@ Convert Native Instruments Maschine expansions into Ableton Live drum racks.
 
 Reconstructs the real named kits from each expansion (via NI's sample naming
 convention) as Live 12 `.adg` drum racks — GM-style pad layout, hi-hat choke
-groups, clean pad labels, tonal one-shots and loops on the upper pads — and
-installs them into the Ableton User Library.
+groups, clean pad labels, tonal one-shots on the upper pads — and installs
+them into the Ableton User Library. Construction loops are placed in a
+separate, clearly-named folder so they're browsable and auto-warp-ready in
+Live.
 
 ## Usage
 
@@ -44,8 +46,8 @@ GM-style mapping on notes 36–51 so standard MIDI drum patterns line up:
     40 Snare2 | 41 TomLo  | 42 ClosedHH| 43 Tom
     36 Kick   | 37 Rim    | 38 Snare   | 39 Clap
 
-Percussion and overflow fill the empty grid slots; tonal one-shots and loops
-stack above from note 52. Hi-hat pads share a choke group.
+Percussion and overflow fill the empty grid slots; tonal one-shots stack above
+from note 52. Hi-hat pads share a choke group.
 
 ## Sample handling
 
@@ -60,6 +62,23 @@ references that copy — never the originals in `/Users/Shared`.
   sample belongs to exactly one kit, so there is no cross-kit duplication.
 - Re-running a conversion overwrites the copies in place (idempotent).
 
+## Construction loops
+
+Construction loops are **not** placed on the drum rack. Instead they are
+copied to:
+
+    User Library/Samples/Imported/Ablekit/<Expansion>/Loops/<Kit>/
+
+and renamed to `<Kit> <Part> [<n>] [<Key>] <BPM>bpm.wav`
+(e.g. `Akka Drums 3 115bpm.wav`, `Akka Full E 115bpm.wav`). The `<BPM>bpm`
+suffix lets Live auto-warp the loop to the session tempo on drag-in.
+
+Browse them in Live: User Library → Samples → Imported → Ablekit → \<Expansion\>
+→ Loops → \<Kit\>.
+
+Each loop is tagged `Type → Loop` (plus `Key` when a key is in the filename)
+so they appear in Live's browser filters.
+
 ## Browser tags (Live 12)
 
 Every converted kit and sample gets Live 12 browser tags written as XMP
@@ -70,7 +89,10 @@ searchable and filterable in Live's browser:
   category in the browser).
 - **Samples** are tagged by role: kick → `Drums → Kick`, snare →
   `Drums → Snare → Snare Hit`, closed hi-hat → `Drums → Hihat → Closed Hihat`,
-  etc. Loops get `Type → Loop`; everything else gets `Type → One Shot`.
+  etc. One-shots get `Type → One Shot`.
+- **Loops** get `Type → Loop` and, when a key is detected in the filename,
+  `Key → <note>` (plus `Key → Minor` for minor-mode loops). They live in their
+  own `Loops/<Kit>/` folder — see Construction loops above.
 - **Everything** gets `Creator → Ablekit`, so you can filter for all ablekit
   output in one click (Instruments and Samples browser → filter by Creator →
   Ablekit).
@@ -92,4 +114,4 @@ searchable and filterable in Live's browser:
 ## Development
 
     uv sync
-    uv run pytest          # 63 tests incl. real-data integration (needs Polar Flare installed)
+    uv run pytest          # 86 tests incl. real-data integration (needs Polar Flare installed)

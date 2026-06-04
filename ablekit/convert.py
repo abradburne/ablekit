@@ -7,8 +7,9 @@ from typing import Callable
 from .folderinfo import KIT_TAGS, write_folder_info
 from .installer import DEFAULT_USER_LIBRARY, KitReport, install_kit
 from .layout import assign_pads
+from .loops import install_loops
 from .matcher import match_expansion
-from .models import Expansion
+from .models import Expansion, Role
 
 
 @dataclass
@@ -32,9 +33,16 @@ def convert_expansion(exp: Expansion,
         if not kit.samples:
             result.skipped.append(kit.name)
             continue
-        pads, dropped = assign_pads(kit.samples)
+        # Split loops out before assigning pads — loops go to their own folder,
+        # not onto drum rack pads.
+        loop_samples = [s for s in kit.samples if s.role is Role.LOOP]
+        rack_samples = [s for s in kit.samples if s.role is not Role.LOOP]
+        pads, dropped = assign_pads(rack_samples)
         report = install_kit(exp.name, kit.name, pads, user_library,
                              dry_run=dry_run, dropped=len(dropped))
+        loop_count = install_loops(exp.name, kit.name, loop_samples,
+                                   user_library, dry_run=dry_run)
+        report.loops = loop_count
         result.kits.append(report)
         if progress:
             progress(kit.name)

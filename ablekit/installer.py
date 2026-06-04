@@ -17,6 +17,7 @@ class KitReport:
     adg_path: Path
     sample_count: int
     dropped: int = 0
+    loops: int = 0
 
 
 def install_kit(expansion_name: str, kit_name: str, pads: list[Pad],

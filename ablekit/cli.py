@@ -54,7 +54,8 @@ def main(argv: list[str] | None = None) -> int:
             exp, args.user_library, dry_run=args.dry_run,
             progress=lambda kit: print(f'  + {kit}'))
         verb = 'would create' if args.dry_run else 'created'
-        print(f'{exp.name}: {verb} {len(result.kits)} kits, '
+        total_loops = sum(r.loops for r in result.kits)
+        print(f'{exp.name}: {verb} {len(result.kits)} kits ({total_loops} loops), '
               f'skipped {len(result.skipped)}, unmatched samples: {result.unmatched}')
     return 0
 
