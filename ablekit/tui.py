@@ -37,7 +37,10 @@ Convert
 Output
   Kits   -> User Library/Presets/Instruments/Drum Rack/Ablekit/<expansion>/
   Samples-> User Library/Samples/Imported/Ablekit/<expansion>/<kit>/
-  Live: Browser -> User Library -> Presets -> Instruments -> Drum Rack -> Ablekit
+  Loops  -> User Library/Samples/Imported/Ablekit/<expansion>/Loops/<kit>/
+           renamed '<Kit> <Part> <n> <Key> <BPM>bpm.wav' so Live auto-warps
+  Live: kits under Browser -> User Library -> Presets -> Instruments
+        -> Drum Rack -> Ablekit; loops under Samples -> Imported -> Ablekit
 
 Other
   ?          this help
@@ -167,7 +170,7 @@ class ConvertScreen(ModalScreen):
             self.query_one('#convert-dest', Label).update('(dry run — nothing written)')
             self.query_one('#convert-hint', Label).update('press any key to close')
         else:
-            dest = (
+            kits_dest = (
                 self.user_library
                 / 'Presets'
                 / 'Instruments'
@@ -175,10 +178,20 @@ class ConvertScreen(ModalScreen):
                 / 'Ablekit'
                 / self.expansion.name
             )
-            self.query_one('#convert-dest', Label).update(f'-> {dest}')
+            loops_dest = (
+                self.user_library
+                / 'Samples'
+                / 'Imported'
+                / 'Ablekit'
+                / self.expansion.name
+                / 'Loops'
+            )
+            self.query_one('#convert-dest', Label).update(
+                f'kits  -> {kits_dest}\nloops -> {loops_dest}')
             self.query_one('#convert-hint', Label).update(
-                'In Live: Browser → User Library → Presets → Instruments'
-                ' → Drum Rack → Ablekit. Press any key to close.'
+                'In Live: kits under Browser → User Library → Presets → Instruments'
+                ' → Drum Rack → Ablekit; loops under Samples → Imported → Ablekit.'
+                ' Press any key to close.'
             )
         self.done = True
 
