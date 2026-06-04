@@ -152,18 +152,25 @@ class ConvertScreen(ModalScreen):
             f'skipped {len(result.skipped)}',
         ]
         if result.unmatched:
-            parts.append(f'unmatched {result.unmatched}')
+            parts.append(f'unmatched {len(result.unmatched)}')
         if result.ignored:
             parts.append(f'ignored {result.ignored}')
         summary = ', '.join(parts)
-        self.app.call_from_thread(self._finish, summary)
+        self.app.call_from_thread(self._finish, summary, result.unmatched)
 
     def _advance(self, kit_name: str) -> None:
         self.query_one('#convert-log', Label).update(kit_name)
         self.query_one('#convert-progress', ProgressBar).advance(1)
 
-    def _finish(self, summary: str) -> None:
-        self.query_one('#convert-log', Label).update('')
+    def _finish(self, summary: str, unmatched: list[Path] | None = None) -> None:
+        if unmatched:
+            names = [p.name for p in unmatched[:5]]
+            log_text = 'unmatched: ' + '\n'.join(names)
+            if len(unmatched) > 5:
+                log_text += f'\n+{len(unmatched) - 5} more'
+            self.query_one('#convert-log', Label).update(log_text)
+        else:
+            self.query_one('#convert-log', Label).update('')
         self.query_one('#convert-summary', Label).update(summary)
         if self.dry_run:
             self.query_one('#convert-dest', Label).update('(dry run — nothing written)')

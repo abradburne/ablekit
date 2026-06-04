@@ -14,7 +14,7 @@ def test_convert_expansion_end_to_end(fake_expansion: Path, tmp_path: Path):
     assert sorted(r.kit_name for r in result.kits) == ['About Us Kit', 'Akka Kit']
     assert result.skipped == []
     # Shaker Orphan: genuinely unmatched (no kit token)
-    assert result.unmatched == 1
+    assert [p.name for p in result.unmatched] == ['Shaker Orphan 1.wav']
     # Key C Akka: Instruments/ folder — by-design ignored multisample
     assert result.ignored == 1
     for r in result.kits:

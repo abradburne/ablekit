@@ -56,10 +56,21 @@ def main(argv: list[str] | None = None) -> int:
         verb = 'would create' if args.dry_run else 'created'
         total_loops = sum(r.loops for r in result.kits)
         summary = (f'{exp.name}: {verb} {len(result.kits)} kits ({total_loops} loops), '
-                   f'skipped {len(result.skipped)}, unmatched {result.unmatched}')
+                   f'skipped {len(result.skipped)}, unmatched {len(result.unmatched)}')
         if result.ignored:
             summary += f', ignored {result.ignored} (multisample instruments)'
         print(summary)
+        if result.unmatched:
+            samples_dir = exp.path / 'Samples'
+            print('  unmatched (NI naming quirks, not converted):')
+            for path in result.unmatched[:20]:
+                try:
+                    rel = path.relative_to(samples_dir)
+                except ValueError:
+                    rel = path
+                print(f'  ! {rel}')
+            if len(result.unmatched) > 20:
+                print(f'  ... and {len(result.unmatched) - 20} more')
     return 0
 
 

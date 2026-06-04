@@ -111,6 +111,8 @@ searchable and filterable in Live's browser:
   that don't fit one-sample-per-pad — excluded by design, not an error);
   **unmatched** = classifiable files that no kit token matched (usually NI
   naming errors in the wild). Only `unmatched` warrants attention.
+  Unmatched files are listed by path (relative to `Samples/`) in the CLI
+  output and by filename in the TUI convert modal.
 - ADG templates are generated from a drum rack saved in the developer's own
   copy of Live via `scripts/build_templates.py`. To regenerate (e.g. for a
   newer Live version), save a single-pad drum rack preset and run:

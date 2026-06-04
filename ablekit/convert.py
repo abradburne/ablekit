@@ -17,8 +17,8 @@ class ConversionResult:
     expansion: str
     kits: list[KitReport] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)  # kits with zero matched samples
-    unmatched: int = 0                                # classifiable audio claimed by no kit
-    ignored: int = 0                                  # audio ignored by design (Instruments/ etc.)
+    unmatched: list[Path] = field(default_factory=list)  # classifiable audio claimed by no kit
+    ignored: int = 0                                     # audio ignored by design (Instruments/ etc.)
 
 
 def convert_expansion(exp: Expansion,
@@ -28,7 +28,7 @@ def convert_expansion(exp: Expansion,
                       progress: Callable[[str], None] | None = None) -> ConversionResult:
     kits, unmatched, ignored = match_expansion(exp)
     result = ConversionResult(expansion=exp.name,
-                              unmatched=len(unmatched),
+                              unmatched=unmatched,
                               ignored=len(ignored))
     for kit in kits:
         if only_kits is not None and kit.name not in only_kits:

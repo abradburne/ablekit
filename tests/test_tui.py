@@ -78,6 +78,26 @@ async def test_tui_select_all_keeps_cursor_row(fake_expansion: Path):
         assert len(app.selected) == 2
 
 
+async def test_tui_dry_run_convert_shows_unmatched(fake_expansion: Path, tmp_path: Path):
+    from ablekit.tui import ConvertScreen
+    lib = tmp_path / 'lib'
+    app = AblekitApp(root=fake_expansion.parent, user_library=lib)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await pilot.press('a')
+        await pilot.press('d')          # dry run → modal pushed
+        await pilot.pause()
+        assert isinstance(app.screen, ConvertScreen)
+        for _ in range(60):
+            await pilot.pause(0.05)
+            if app.screen.done:
+                break
+        assert app.screen.done
+        # #convert-log should show unmatched filenames after conversion done
+        log = app.screen.query_one('#convert-log')
+        assert 'Shaker Orphan 1.wav' in str(log.content)
+
+
 async def test_tui_dry_run_convert(fake_expansion: Path, tmp_path: Path):
     from ablekit.tui import ConvertScreen
     lib = tmp_path / 'lib'

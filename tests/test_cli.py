@@ -20,6 +20,15 @@ def test_convert_path(fake_expansion: Path, tmp_path: Path, capsys):
     assert (lib / 'Presets/Instruments/Drum Rack/Ablekit/Test Library/Akka Kit.adg').exists()
 
 
+def test_convert_path_lists_unmatched(fake_expansion: Path, tmp_path: Path, capsys):
+    lib = tmp_path / 'lib'
+    code = main(['convert', str(fake_expansion), '--user-library', str(lib)])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert 'unmatched (NI naming quirks' in out
+    assert 'Shaker Orphan 1.wav' in out
+
+
 def test_convert_all(fake_expansion: Path, tmp_path: Path, capsys):
     lib = tmp_path / 'lib'
     code = main(['convert', '--all', '--root', str(fake_expansion.parent),

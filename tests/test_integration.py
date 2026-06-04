@@ -19,7 +19,8 @@ def test_convert_polar_flare_against_tmp_library(tmp_path: Path):
 
     assert len(result.kits) == 40
     assert result.skipped == []
-    assert result.unmatched == 9     # genuinely unmatched (no kit token matched)
+    assert len(result.unmatched) == 9     # genuinely unmatched (no kit token matched)
+    assert all('NorthernForest' in p.name for p in result.unmatched)
     assert result.ignored == 134     # Instruments/ multisample sets — by design
 
     akka = next(r for r in result.kits if r.kit_name == 'Akka Kit')
