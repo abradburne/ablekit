@@ -117,9 +117,10 @@ async def test_tui_dry_run_convert(fake_expansion: Path, tmp_path: Path):
         assert app.screen.done
         # library must not have been written (dry run)
         assert not lib.exists()
-        # summary label inside modal must say 'would create'
+        # summary label inside modal must say 'would create' and show loop count
         summary = app.screen.query_one('#convert-summary')
         assert 'would create' in str(summary.content)
+        assert '(1 loops)' in str(summary.content)  # fixture Akka Kit has 1 loop
         # dismiss with any key → modal gone, status updated
         await pilot.press('enter')
         assert not isinstance(app.screen, ConvertScreen)

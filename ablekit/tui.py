@@ -147,8 +147,9 @@ class ConvertScreen(ModalScreen):
         )
 
         verb = 'would create' if self.dry_run else 'created'
+        total_loops = sum(r.loops for r in result.kits)
         parts = [
-            f'{verb} {len(result.kits)} kits',
+            f'{verb} {len(result.kits)} kits ({total_loops} loops)',
             f'skipped {len(result.skipped)}',
         ]
         if result.unmatched:
