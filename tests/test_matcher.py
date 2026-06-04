@@ -26,7 +26,7 @@ def kit_named(kits, name):
 
 def test_match_expansion_assigns_samples_to_kits(fake_expansion: Path):
     exp = scan_expansion(fake_expansion)
-    kits, unmatched, ignored = match_expansion(exp)
+    kits, unmatched, ignored, fuzzy = match_expansion(exp)
 
     akka = kit_named(kits, 'Akka Kit')
     names = sorted(s.path.name for s in akka.samples)
@@ -55,7 +55,7 @@ def test_match_expansion_assigns_samples_to_kits(fake_expansion: Path):
 
 def test_match_expansion_classifies_roles(fake_expansion: Path):
     exp = scan_expansion(fake_expansion)
-    kits, _, _ignored = match_expansion(exp)
+    kits, _, _ignored, _fuzzy = match_expansion(exp)
     akka = kit_named(kits, 'Akka Kit')
     roles = {s.path.name: s.role for s in akka.samples}
     assert roles['Kick Akka 1.wav'] is Role.KICK
@@ -76,21 +76,23 @@ def test_match_expansion_classifies_roles(fake_expansion: Path):
 def test_match_expansion_separates_unmatched_from_ignored(fake_expansion: Path):
     """Instruments audio (classify→None) goes to ignored; no-kit-match goes to unmatched."""
     exp = scan_expansion(fake_expansion)
-    kits, unmatched, ignored = match_expansion(exp)
+    kits, unmatched, ignored, fuzzy = match_expansion(exp)
     unmatched_names = sorted(p.name for p in unmatched)
     ignored_names = sorted(p.name for p in ignored)
-    # Shaker matches no kit token — genuinely unmatched
+    # Shaker matches no kit token — genuinely unmatched (Orphan ratio too low to fuzzy-match)
     assert unmatched_names == ['Shaker Orphan 1.wav']
     # Key C Akka lives in Instruments/ — classify() returns None, by design ignored
     assert ignored_names == ['Key C Akka 1.wav']
     for kit in kits:
         assert all('Key C' not in s.path.name for s in kit.samples)
+    # Fuzzy pass must not claim 'Orphan' — ratios ~0.2 against Akka/AboutUs are far below 0.84
+    assert fuzzy == []
 
 
 def test_match_expansion_skips_empty_token_kit(fake_expansion: Path):
     from ablekit.models import Expansion
     exp = Expansion(name='Test Library', path=fake_expansion, kit_names=['Kit'])
-    kits, unmatched, ignored = match_expansion(exp)
+    kits, unmatched, ignored, fuzzy = match_expansion(exp)
     assert kits[0].samples == []          # empty token claims nothing
     assert len(unmatched) > 0
     assert len(ignored) > 0              # Instruments/ files are always ignored
@@ -114,7 +116,7 @@ def test_match_case_insensitive_and_spaced_forms(tmp_path: Path):
         (drums / name).write_bytes(b'RIFF')
     exp = Expansion(name='CH', path=root,
                     kit_names=['AdrenaLinn Kit', 'Cinch Kit', 'Edge Drum Kit', 'White Room Kit'])
-    kits, unmatched, ignored = match_expansion(exp)
+    kits, unmatched, ignored, fuzzy = match_expansion(exp)
     by = {k.name: sorted(s.path.name for s in k.samples) for k in kits}
     assert by['AdrenaLinn Kit'] == ['Kick Adrenalinn 1.wav']
     assert by['Cinch Kit'] == ['Kick CInch 3.wav']
@@ -134,7 +136,7 @@ def test_match_truncated_token_fallback(tmp_path: Path):
     (root / 'Samples' / 'Drums' / 'Kick' / 'Kick Akka 1.wav').write_bytes(b'RIFF')
     exp = Expansion(name='PF', path=root,
                     kit_names=['Akka Kit', 'When I Reach Out Kit'])
-    kits, unmatched, ignored = match_expansion(exp)
+    kits, unmatched, ignored, fuzzy = match_expansion(exp)
     by = {k.name: [s.path.name for s in k.samples] for k in kits}
     assert by['When I Reach Out Kit'] == ['Vox WhenIReach 9.wav']
     assert by['Akka Kit'] == ['Kick Akka 1.wav']
@@ -154,3 +156,43 @@ def test_pad_name_strips_spaced_form():
 def test_kit_pattern_bare_kit_matches_nothing():
     from ablekit.matcher import kit_pattern
     assert kit_pattern('Kit').search('Kick 1.wav') is None
+
+
+def test_fuzzy_matches_typod_kit_name(tmp_path: Path):
+    from ablekit.models import Expansion
+    root = tmp_path / 'CH'
+    one = root / 'Samples' / 'One Shots' / 'Synth Note'
+    one.mkdir(parents=True)
+    (one / 'Synth Stailed Train C MSV.wav').write_bytes(b'RIFF')
+    exp = Expansion(name='CH', path=root, kit_names=['Stalled Train Kit'])
+    kits, unmatched, ignored, fuzzy = match_expansion(exp)
+    assert [s.path.name for s in kits[0].samples] == ['Synth Stailed Train C MSV.wav']
+    assert kits[0].samples[0].pad_name == 'Synth C MSV'
+    assert [p.name for p, k in fuzzy] == ['Synth Stailed Train C MSV.wav']
+    assert unmatched == []
+
+
+def test_fuzzy_disabled(tmp_path: Path):
+    from ablekit.models import Expansion
+    root = tmp_path / 'CH'
+    one = root / 'Samples' / 'One Shots' / 'Synth Note'
+    one.mkdir(parents=True)
+    (one / 'Synth Stailed Train C MSV.wav').write_bytes(b'RIFF')
+    exp = Expansion(name='CH', path=root, kit_names=['Stalled Train Kit'])
+    kits, unmatched, ignored, fuzzy = match_expansion(exp, fuzzy=False)
+    assert kits[0].samples == []
+    assert len(unmatched) == 1
+    assert fuzzy == []
+
+
+def test_fuzzy_skips_ambiguous(tmp_path: Path):
+    # two near-equal kits -> no assignment
+    from ablekit.models import Expansion
+    root = tmp_path / 'X'
+    d = root / 'Samples' / 'Drums' / 'Kick'
+    d.mkdir(parents=True)
+    (d / 'Kick Bergan 1.wav').write_bytes(b'RIFF')
+    exp = Expansion(name='X', path=root, kit_names=['Bergun Kit', 'Bergen Kit'])
+    kits, unmatched, ignored, fuzzy = match_expansion(exp)
+    assert all(not k.samples for k in kits)
+    assert len(unmatched) == 1

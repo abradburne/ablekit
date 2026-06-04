@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from difflib import SequenceMatcher
 from pathlib import Path
 
 from .models import Expansion, Kit, Role, Sample
@@ -126,7 +127,47 @@ def classify(samples_root: Path, path: Path) -> Role | None:
     return FOLDER_ROLES.get(folder, Role.PERC)
 
 
-def match_expansion(exp: Expansion) -> tuple[list[Kit], list[Path], list[Path]]:
+def _fuzzy_candidates(stem: str) -> list[str]:
+    """Generate all contiguous word n-grams from a sample stem for fuzzy matching.
+
+    Strips the leading category word (first word) and trailing key/number/MSV
+    tokens, then returns all non-empty contiguous subsequences of remaining
+    words joined without spaces (glued).
+
+    Example: 'Synth Stailed Train A# MSV' -> ['StailedTrain', 'Stailed', 'Train']
+    """
+    words = stem.split()
+    if not words:
+        return []
+    # Drop first word (category: 'Synth', 'Kick', 'Perc', ...)
+    words = words[1:]
+    # Drop trailing tokens that are numbers, musical keys, or 'MSV'
+    _trailing = re.compile(r'^\d+$|^[A-G](#|b)?m?$|^MSV$', re.IGNORECASE)
+    while words and _trailing.match(words[-1]):
+        words.pop()
+    if not words:
+        return []
+    candidates = []
+    n = len(words)
+    for length in range(n, 0, -1):
+        for start in range(n - length + 1):
+            chunk = words[start:start + length]
+            glued = ''.join(chunk)
+            if glued:
+                candidates.append((glued, ' '.join(chunk)))
+    # Return glued forms (unique, preserving order) along with their spaced originals
+    # packed as (glued, spaced) — caller uses both
+    seen: set[str] = set()
+    result = []
+    for glued, spaced in candidates:
+        if glued not in seen:
+            seen.add(glued)
+            result.append((glued, spaced))
+    return result
+
+
+def match_expansion(exp: Expansion, fuzzy: bool = True) -> tuple[
+        list[Kit], list[Path], list[Path], list[tuple[Path, str]]]:
     """Assign every audio file under Samples/ to a kit by name token.
 
     Tokens are matched case-insensitively against the path relative to
@@ -134,11 +175,15 @@ def match_expansion(exp: Expansion) -> tuple[list[Kit], list[Path], list[Path]]:
     e.g. 'NordicForest' cannot be claimed by a shorter overlapping token.
     A truncation fallback handles kits whose NI-stored token was shortened
     in the sample filenames (e.g. 'WhenIReachOut' -> 'WhenIReach').
+    A final fuzzy pass (when fuzzy=True) assigns still-unmatched files to
+    the closest kit by SequenceMatcher ratio, provided the best score is
+    >= 0.84 and leads the second-best by >= 0.05.
 
-    Returns (kits, unmatched, ignored):
+    Returns (kits, unmatched, ignored, fuzzy_matches):
       - unmatched: classifiable audio files claimed by no kit token
       - ignored: audio where classify() returns None (e.g. Instruments/
         multisample sets that don't fit one-sample-per-pad); by design
+      - fuzzy_matches: list of (path, kit_name) for fuzzy-assigned files
     """
     samples_root = exp.path / 'Samples'
     audio = [p for p in sorted(samples_root.rglob('*'))
@@ -192,5 +237,41 @@ def match_expansion(exp: Expansion) -> tuple[list[Kit], list[Path], list[Path]]:
                                pad_name=pad_name(path.stem, cand)))
                 break  # first truncation that yielded matches wins
 
+    # Fuzzy fallback: assign still-unmatched classifiable files to the closest
+    # kit token using SequenceMatcher, provided the match is unambiguous.
+    fuzzy_matches: list[tuple[Path, str]] = []
+    if fuzzy:
+        eligible_kits = [k for k in kits if k.token]
+        still_unmatched = [p for p in classifiable if p not in claimed]
+        for path in still_unmatched:
+            cands = _fuzzy_candidates(path.stem)
+            if not cands:
+                continue
+            scores: list[tuple[float, Kit, str]] = []  # (ratio, kit, spaced_form)
+            for kit in eligible_kits:
+                best_ratio = 0.0
+                best_spaced = ''
+                for glued, spaced in cands:
+                    r = SequenceMatcher(None, glued.lower(), kit.token.lower()).ratio()
+                    if r > best_ratio:
+                        best_ratio = r
+                        best_spaced = spaced
+                scores.append((best_ratio, kit, best_spaced))
+            scores.sort(key=lambda x: x[0], reverse=True)
+            if not scores:
+                continue
+            best_ratio, best_kit, best_spaced = scores[0]
+            second_ratio = scores[1][0] if len(scores) > 1 else 0.0
+            if best_ratio >= 0.84 and (best_ratio - second_ratio) >= 0.05:
+                # Strip the misspelled n-gram from stem before building pad_name
+                clean_stem = re.sub(re.escape(best_spaced), '', path.stem,
+                                    flags=re.IGNORECASE).strip()
+                clean_stem = re.sub(r'\s+', ' ', clean_stem)
+                claimed.add(path)
+                best_kit.samples.append(
+                    Sample(path=path, role=roles[path],
+                           pad_name=pad_name(clean_stem, best_kit.name)))
+                fuzzy_matches.append((path, best_kit.name))
+
     unmatched = [p for p in classifiable if p not in claimed]
-    return kits, unmatched, ignored
+    return kits, unmatched, ignored, fuzzy_matches

@@ -24,6 +24,8 @@ def main(argv: list[str] | None = None) -> int:
     conv.add_argument('--root', type=Path, default=SHARED,
                       help='where --all scans for expansions')
     conv.add_argument('--dry-run', action='store_true', help='print plan, write nothing')
+    conv.add_argument('--no-fuzzy', action='store_true',
+                      help='disable fuzzy matching for misnamed samples')
     conv.add_argument('--user-library', type=Path, default=DEFAULT_USER_LIBRARY)
 
     args = parser.parse_args(argv)
@@ -52,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     for exp in expansions:
         result = convert_expansion(
             exp, args.user_library, dry_run=args.dry_run,
+            fuzzy=not args.no_fuzzy,
             progress=lambda kit: print(f'  + {kit}'))
         verb = 'would create' if args.dry_run else 'created'
         total_loops = sum(r.loops for r in result.kits)
@@ -71,6 +74,15 @@ def main(argv: list[str] | None = None) -> int:
                 print(f'  ! {rel}')
             if len(result.unmatched) > 20:
                 print(f'  ... and {len(result.unmatched) - 20} more')
+        if result.fuzzy:
+            samples_dir = exp.path / 'Samples'
+            print('  fuzzy-fixed (best-guess kit for misnamed files):')
+            for path, kit_name in result.fuzzy:
+                try:
+                    rel = path.relative_to(samples_dir)
+                except ValueError:
+                    rel = path
+                print(f'  ~ {rel} -> {kit_name}')
     return 0
 
 

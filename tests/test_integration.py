@@ -19,9 +19,12 @@ def test_convert_polar_flare_against_tmp_library(tmp_path: Path):
 
     assert len(result.kits) == 40
     assert result.skipped == []
-    assert len(result.unmatched) == 9     # genuinely unmatched (no kit token matched)
+    # NorthernForest files stay unmatched: best fuzzy ratio ~0.69 (below 0.84 threshold)
+    # — genuinely ambiguous between NordicForest and NorthernElements tokens
+    assert len(result.unmatched) == 9
     assert all('NorthernForest' in p.name for p in result.unmatched)
     assert result.ignored == 134     # Instruments/ multisample sets — by design
+    assert result.fuzzy == []        # No fuzzy matches for Polar Flare (NorthernForest below threshold)
 
     akka = next(r for r in result.kits if r.kit_name == 'Akka Kit')
     raw = gzip.decompress(akka.adg_path.read_bytes())

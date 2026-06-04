@@ -56,3 +56,30 @@ def test_convert_without_args_errors(capsys):
     code = main(['convert'])
     assert code == 1
     assert 'nothing to convert' in capsys.readouterr().err
+
+
+def test_no_fuzzy_flag_accepted(fake_expansion: Path, tmp_path: Path, capsys):
+    """--no-fuzzy is a valid flag; with the fixture it changes nothing (no typo files)."""
+    lib = tmp_path / 'lib'
+    code = main(['convert', str(fake_expansion), '--no-fuzzy', '--user-library', str(lib)])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert 'created 2 kits' in out
+
+
+def test_fuzzy_listing_printed(tmp_path: Path, capsys):
+    """CLI prints fuzzy-fixed section when fuzzy matches exist."""
+    root = tmp_path / 'CH'
+    one = root / 'Samples' / 'One Shots' / 'Synth Note'
+    one.mkdir(parents=True)
+    (one / 'Synth Stailed Train A MSV.wav').write_bytes(b'RIFF')
+    kits_dir = root / 'Groups' / 'Kits'
+    kits_dir.mkdir(parents=True)
+    (kits_dir / 'Stalled Train Kit.mxgrp').write_bytes(b'\x00')
+    lib = tmp_path / 'lib'
+    code = main(['convert', str(root), '--dry-run', '--user-library', str(lib)])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert 'fuzzy-fixed' in out
+    assert 'Stalled Train Kit' in out
+    assert 'Synth Stailed Train A MSV.wav' in out

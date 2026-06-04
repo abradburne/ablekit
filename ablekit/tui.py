@@ -155,6 +155,8 @@ class ConvertScreen(ModalScreen):
             parts.append(f'unmatched {len(result.unmatched)}')
         if result.ignored:
             parts.append(f'ignored {result.ignored}')
+        if result.fuzzy:
+            parts.append(f'fuzzy {len(result.fuzzy)}')
         summary = ', '.join(parts)
         self.app.call_from_thread(self._finish, summary, result.unmatched)
 
@@ -281,7 +283,7 @@ class AblekitApp(App):
     def show_expansion(self, exp: Expansion) -> None:
         self.current = exp
         self.selected.clear()
-        self.kits, _, _ignored = match_expansion(exp)
+        self.kits, _, _ignored, _fuzzy = match_expansion(exp)
         self.refresh_kit_table()
 
     def refresh_kit_table(self) -> None:

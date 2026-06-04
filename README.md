@@ -113,6 +113,10 @@ searchable and filterable in Live's browser:
   naming errors in the wild). Only `unmatched` warrants attention.
   Unmatched files are listed by path (relative to `Samples/`) in the CLI
   output and by filename in the TUI convert modal.
+- Misnamed sample files (NI typos) are fuzzy-matched to the closest kit when
+  the match is unambiguous (SequenceMatcher ratio ≥ 0.84, margin ≥ 0.05 over
+  second-best). Fuzzy-fixed files are listed in CLI output as `~ <path> -> <kit>`.
+  Disable with `--no-fuzzy` if you prefer strict token matching only.
 - ADG templates are generated from a drum rack saved in the developer's own
   copy of Live via `scripts/build_templates.py`. To regenerate (e.g. for a
   newer Live version), save a single-pad drum rack preset and run:
@@ -121,4 +125,4 @@ searchable and filterable in Live's browser:
 ## Development
 
     uv sync
-    uv run pytest          # 87 tests incl. real-data integration (needs Polar Flare installed)
+    uv run pytest          # 93 tests incl. real-data integration (needs Polar Flare installed)

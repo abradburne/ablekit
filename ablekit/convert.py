@@ -19,17 +19,20 @@ class ConversionResult:
     skipped: list[str] = field(default_factory=list)  # kits with zero matched samples
     unmatched: list[Path] = field(default_factory=list)  # classifiable audio claimed by no kit
     ignored: int = 0                                     # audio ignored by design (Instruments/ etc.)
+    fuzzy: list[tuple[Path, str]] = field(default_factory=list)  # (path, kit_name) fuzzy-fixed
 
 
 def convert_expansion(exp: Expansion,
                       user_library: Path = DEFAULT_USER_LIBRARY,
                       dry_run: bool = False,
                       only_kits: set[str] | None = None,
-                      progress: Callable[[str], None] | None = None) -> ConversionResult:
-    kits, unmatched, ignored = match_expansion(exp)
+                      progress: Callable[[str], None] | None = None,
+                      fuzzy: bool = True) -> ConversionResult:
+    kits, unmatched, ignored, fuzzy_matches = match_expansion(exp, fuzzy=fuzzy)
     result = ConversionResult(expansion=exp.name,
                               unmatched=unmatched,
-                              ignored=len(ignored))
+                              ignored=len(ignored),
+                              fuzzy=fuzzy_matches)
     for kit in kits:
         if only_kits is not None and kit.name not in only_kits:
             continue
