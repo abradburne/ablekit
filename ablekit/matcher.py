@@ -126,7 +126,7 @@ def classify(samples_root: Path, path: Path) -> Role | None:
     return FOLDER_ROLES.get(folder, Role.PERC)
 
 
-def match_expansion(exp: Expansion) -> tuple[list[Kit], list[Path]]:
+def match_expansion(exp: Expansion) -> tuple[list[Kit], list[Path], list[Path]]:
     """Assign every audio file under Samples/ to a kit by name token.
 
     Tokens are matched case-insensitively against the path relative to
@@ -134,12 +134,24 @@ def match_expansion(exp: Expansion) -> tuple[list[Kit], list[Path]]:
     e.g. 'NordicForest' cannot be claimed by a shorter overlapping token.
     A truncation fallback handles kits whose NI-stored token was shortened
     in the sample filenames (e.g. 'WhenIReachOut' -> 'WhenIReach').
-    Returns (kits, unmatched audio paths).
+
+    Returns (kits, unmatched, ignored):
+      - unmatched: classifiable audio files claimed by no kit token
+      - ignored: audio where classify() returns None (e.g. Instruments/
+        multisample sets that don't fit one-sample-per-pad); by design
     """
     samples_root = exp.path / 'Samples'
     audio = [p for p in sorted(samples_root.rglob('*'))
              if p.suffix.lower() in AUDIO_EXTS]
     kits = [Kit(name=n, token=kit_token(n)) for n in exp.kit_names]
+
+    # Pre-classify all audio once: path -> role|None.
+    # Files where classify() returns None are by-design ignored (Instruments/
+    # multisample folders etc.) and are never offered to the match loop.
+    roles: dict[Path, Role | None] = {p: classify(samples_root, p) for p in audio}
+    ignored = [p for p, role in roles.items() if role is None]
+    classifiable = [p for p in audio if roles[p] is not None]
+
     claimed: set[Path] = set()
 
     # Main pass: longest token first to prevent shorter tokens stealing matches.
@@ -147,14 +159,12 @@ def match_expansion(exp: Expansion) -> tuple[list[Kit], list[Path]]:
         if not kit.token:
             continue
         pattern = kit_pattern(kit.name)
-        for path in audio:
+        for path in classifiable:
             if path in claimed:
                 continue
             if not pattern.search(str(path.relative_to(samples_root))):
                 continue
-            role = classify(samples_root, path)
-            if role is None:
-                continue
+            role = roles[path]
             claimed.add(path)
             kit.samples.append(
                 Sample(path=path, role=role, pad_name=pad_name(path.stem, kit.name)))
@@ -171,19 +181,16 @@ def match_expansion(exp: Expansion) -> tuple[list[Kit], list[Path]]:
         for cand in _truncations(kit.token):
             pat = re.compile(
                 rf'(?<!\w){re.escape(cand)}s?(?![A-Za-z])', re.IGNORECASE)
-            matches = [p for p in audio
+            matches = [p for p in classifiable
                        if p not in claimed and pat.search(
                            str(p.relative_to(samples_root)))]
             if matches:
                 for path in matches:
-                    role = classify(samples_root, path)
-                    if role is None:
-                        continue
                     claimed.add(path)
                     kit.samples.append(
-                        Sample(path=path, role=role,
+                        Sample(path=path, role=roles[path],
                                pad_name=pad_name(path.stem, cand)))
                 break  # first truncation that yielded matches wins
 
-    unmatched = [p for p in audio if p not in claimed]
-    return kits, unmatched
+    unmatched = [p for p in classifiable if p not in claimed]
+    return kits, unmatched, ignored

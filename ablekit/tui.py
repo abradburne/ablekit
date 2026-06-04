@@ -147,11 +147,15 @@ class ConvertScreen(ModalScreen):
         )
 
         verb = 'would create' if self.dry_run else 'created'
-        summary = (
-            f'{verb} {len(result.kits)} kits, '
-            f'skipped {len(result.skipped)}, '
-            f'unmatched {result.unmatched}'
-        )
+        parts = [
+            f'{verb} {len(result.kits)} kits',
+            f'skipped {len(result.skipped)}',
+        ]
+        if result.unmatched:
+            parts.append(f'unmatched {result.unmatched}')
+        if result.ignored:
+            parts.append(f'ignored {result.ignored}')
+        summary = ', '.join(parts)
         self.app.call_from_thread(self._finish, summary)
 
     def _advance(self, kit_name: str) -> None:
@@ -270,7 +274,7 @@ class AblekitApp(App):
     def show_expansion(self, exp: Expansion) -> None:
         self.current = exp
         self.selected.clear()
-        self.kits, _ = match_expansion(exp)
+        self.kits, _, _ignored = match_expansion(exp)
         self.refresh_kit_table()
 
     def refresh_kit_table(self) -> None:

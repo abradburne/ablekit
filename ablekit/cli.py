@@ -55,8 +55,11 @@ def main(argv: list[str] | None = None) -> int:
             progress=lambda kit: print(f'  + {kit}'))
         verb = 'would create' if args.dry_run else 'created'
         total_loops = sum(r.loops for r in result.kits)
-        print(f'{exp.name}: {verb} {len(result.kits)} kits ({total_loops} loops), '
-              f'skipped {len(result.skipped)}, unmatched samples: {result.unmatched}')
+        summary = (f'{exp.name}: {verb} {len(result.kits)} kits ({total_loops} loops), '
+                   f'skipped {len(result.skipped)}, unmatched {result.unmatched}')
+        if result.ignored:
+            summary += f', ignored {result.ignored} (multisample instruments)'
+        print(summary)
     return 0
 
 

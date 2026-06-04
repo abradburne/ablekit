@@ -106,6 +106,11 @@ searchable and filterable in Live's browser:
 - Expansions without the `Samples/Drums|One Shots|Loops` hierarchy (e.g.
   flat artist-folder packs like Community Drive) are detected but their kits
   are skipped — a category-fallback mode is a possible future addition.
+- The summary line distinguishes two kinds of unassigned audio:
+  **ignored** = `Samples/Instruments/` multisample sets (polyphonic key maps
+  that don't fit one-sample-per-pad — excluded by design, not an error);
+  **unmatched** = classifiable files that no kit token matched (usually NI
+  naming errors in the wild). Only `unmatched` warrants attention.
 - ADG templates are generated from a drum rack saved in the developer's own
   copy of Live via `scripts/build_templates.py`. To regenerate (e.g. for a
   newer Live version), save a single-pad drum rack preset and run:

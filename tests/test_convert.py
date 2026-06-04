@@ -13,8 +13,10 @@ def test_convert_expansion_end_to_end(fake_expansion: Path, tmp_path: Path):
     assert result.expansion == 'Test Library'
     assert sorted(r.kit_name for r in result.kits) == ['About Us Kit', 'Akka Kit']
     assert result.skipped == []
-    # Orphan shaker + ignored Instruments file
-    assert result.unmatched == 2
+    # Shaker Orphan: genuinely unmatched (no kit token)
+    assert result.unmatched == 1
+    # Key C Akka: Instruments/ folder — by-design ignored multisample
+    assert result.ignored == 1
     for r in result.kits:
         assert r.adg_path.exists()
 

@@ -26,7 +26,7 @@ def kit_named(kits, name):
 
 def test_match_expansion_assigns_samples_to_kits(fake_expansion: Path):
     exp = scan_expansion(fake_expansion)
-    kits, unmatched = match_expansion(exp)
+    kits, unmatched, ignored = match_expansion(exp)
 
     akka = kit_named(kits, 'Akka Kit')
     names = sorted(s.path.name for s in akka.samples)
@@ -55,7 +55,7 @@ def test_match_expansion_assigns_samples_to_kits(fake_expansion: Path):
 
 def test_match_expansion_classifies_roles(fake_expansion: Path):
     exp = scan_expansion(fake_expansion)
-    kits, _ = match_expansion(exp)
+    kits, _, _ignored = match_expansion(exp)
     akka = kit_named(kits, 'Akka Kit')
     roles = {s.path.name: s.role for s in akka.samples}
     assert roles['Kick Akka 1.wav'] is Role.KICK
@@ -73,12 +73,16 @@ def test_match_expansion_classifies_roles(fake_expansion: Path):
     assert about_roles['Clap AboutUs.wav'] is Role.CLAP
 
 
-def test_match_expansion_reports_unmatched_and_ignores_instruments(fake_expansion: Path):
+def test_match_expansion_separates_unmatched_from_ignored(fake_expansion: Path):
+    """Instruments audio (classify→None) goes to ignored; no-kit-match goes to unmatched."""
     exp = scan_expansion(fake_expansion)
-    kits, unmatched = match_expansion(exp)
+    kits, unmatched, ignored = match_expansion(exp)
     unmatched_names = sorted(p.name for p in unmatched)
-    # Orphan matches no kit token; Instruments folder is ignored by design
-    assert unmatched_names == ['Key C Akka 1.wav', 'Shaker Orphan 1.wav']
+    ignored_names = sorted(p.name for p in ignored)
+    # Shaker matches no kit token — genuinely unmatched
+    assert unmatched_names == ['Shaker Orphan 1.wav']
+    # Key C Akka lives in Instruments/ — classify() returns None, by design ignored
+    assert ignored_names == ['Key C Akka 1.wav']
     for kit in kits:
         assert all('Key C' not in s.path.name for s in kit.samples)
 
@@ -86,9 +90,10 @@ def test_match_expansion_reports_unmatched_and_ignores_instruments(fake_expansio
 def test_match_expansion_skips_empty_token_kit(fake_expansion: Path):
     from ablekit.models import Expansion
     exp = Expansion(name='Test Library', path=fake_expansion, kit_names=['Kit'])
-    kits, unmatched = match_expansion(exp)
+    kits, unmatched, ignored = match_expansion(exp)
     assert kits[0].samples == []          # empty token claims nothing
     assert len(unmatched) > 0
+    assert len(ignored) > 0              # Instruments/ files are always ignored
 
 
 def test_kit_token_case_insensitive_suffix():
@@ -109,13 +114,14 @@ def test_match_case_insensitive_and_spaced_forms(tmp_path: Path):
         (drums / name).write_bytes(b'RIFF')
     exp = Expansion(name='CH', path=root,
                     kit_names=['AdrenaLinn Kit', 'Cinch Kit', 'Edge Drum Kit', 'White Room Kit'])
-    kits, unmatched = match_expansion(exp)
+    kits, unmatched, ignored = match_expansion(exp)
     by = {k.name: sorted(s.path.name for s in k.samples) for k in kits}
     assert by['AdrenaLinn Kit'] == ['Kick Adrenalinn 1.wav']
     assert by['Cinch Kit'] == ['Kick CInch 3.wav']
     assert by['Edge Drum Kit'] == ['Kick Edge Drum 3.wav', 'Kick EdgeDrums.wav']
     assert by['White Room Kit'] == ['Kick WhiteRoom1.wav']
     assert unmatched == []
+    assert ignored == []
 
 
 def test_match_truncated_token_fallback(tmp_path: Path):
@@ -128,11 +134,12 @@ def test_match_truncated_token_fallback(tmp_path: Path):
     (root / 'Samples' / 'Drums' / 'Kick' / 'Kick Akka 1.wav').write_bytes(b'RIFF')
     exp = Expansion(name='PF', path=root,
                     kit_names=['Akka Kit', 'When I Reach Out Kit'])
-    kits, unmatched = match_expansion(exp)
+    kits, unmatched, ignored = match_expansion(exp)
     by = {k.name: [s.path.name for s in k.samples] for k in kits}
     assert by['When I Reach Out Kit'] == ['Vox WhenIReach 9.wav']
     assert by['Akka Kit'] == ['Kick Akka 1.wav']
     assert unmatched == []
+    assert ignored == []
 
 
 def test_pad_name_case_insensitive_token_removal():
