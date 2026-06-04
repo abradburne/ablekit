@@ -186,12 +186,17 @@ class ConvertScreen(ModalScreen):
         self.query_one('#convert-log', Label).update(kit_name)
         self.query_one('#convert-progress', ProgressBar).advance(1)
 
+    @staticmethod
+    def _short(path: Path) -> str:
+        """Abbreviate the home directory so paths fit the modal width."""
+        try:
+            return '~/' + str(path.relative_to(Path.home()))
+        except ValueError:
+            return str(path)
+
     def _finish(self, summary: str, unmatched: list[Path] | None = None) -> None:
         if unmatched:
-            names = [p.name for p in unmatched[:5]]
-            log_text = 'unmatched: ' + '\n'.join(names)
-            if len(unmatched) > 5:
-                log_text += f'\n+{len(unmatched) - 5} more'
+            log_text = 'unmatched:\n' + '\n'.join(p.name for p in unmatched)
             self.query_one('#convert-log', Label).update(log_text)
         else:
             self.query_one('#convert-log', Label).update('')
@@ -199,40 +204,17 @@ class ConvertScreen(ModalScreen):
         if self.dry_run:
             self.query_one('#convert-dest', Label).update('(dry run — nothing written)')
             self.query_one('#convert-hint', Label).update('press any key to close')
-        elif len(self.jobs) == 1:
-            expansion = self.jobs[0][0]
-            kits_dest = (
-                self.user_library
-                / 'Presets'
-                / 'Instruments'
-                / 'Drum Rack'
-                / 'Ablekit'
-                / expansion.name
-            )
-            loops_dest = (
-                self.user_library
-                / 'Samples'
-                / 'Imported'
-                / 'Ablekit'
-                / expansion.name
-                / 'Loops'
-            )
-            self.query_one('#convert-dest', Label).update(
-                f'kits  -> {kits_dest}\nloops -> {loops_dest}')
-            self.query_one('#convert-hint', Label).update(
-                'In Live: kits under Browser → User Library → Presets → Instruments'
-                ' → Drum Rack → Ablekit; loops under Samples → Imported → Ablekit.'
-                ' Press any key to close.'
-            )
         else:
-            kits_dest = (
-                self.user_library / 'Presets' / 'Instruments' / 'Drum Rack' / 'Ablekit'
-            )
-            loops_dest = (
-                self.user_library / 'Samples' / 'Imported' / 'Ablekit'
-            )
+            lib = self._short(self.user_library)
+            if len(self.jobs) == 1:
+                exp = self.jobs[0][0].name
+                kits_rel = f'Presets/Instruments/Drum Rack/Ablekit/{exp}/'
+                loops_rel = f'Samples/Imported/Ablekit/{exp}/Loops/'
+            else:
+                kits_rel = 'Presets/Instruments/Drum Rack/Ablekit/'
+                loops_rel = 'Samples/Imported/Ablekit/'
             self.query_one('#convert-dest', Label).update(
-                f'kits  -> {kits_dest}/\nloops -> {loops_dest}/')
+                f'in {lib}:\n  kits  -> {kits_rel}\n  loops -> {loops_rel}')
             self.query_one('#convert-hint', Label).update(
                 'In Live: kits under Browser → User Library → Presets → Instruments'
                 ' → Drum Rack → Ablekit; loops under Samples → Imported → Ablekit.'
