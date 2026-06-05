@@ -46,6 +46,7 @@ def test_install_kit_writes_sample_sidecar(tmp_path: Path):
     assert sidecar.exists()
     content = sidecar.read_text()
     assert 'Kick A 1.wav' in content
+    assert 'Expansion|Test Library' in content
 
 
 def test_install_kit_dry_run_writes_nothing(tmp_path: Path):

@@ -11,7 +11,7 @@ import re
 import shutil
 from pathlib import Path
 
-from .folderinfo import CREATOR_TAG, NI_TAG, write_folder_info
+from .folderinfo import CREATOR_TAG, NI_TAG, expansion_tag, write_folder_info
 from .models import Sample
 
 # Matches the mandatory '<Part>[<bpm>]' prefix of a loop stem.
@@ -120,8 +120,8 @@ def loop_filename(stem: str, suffix: str, kit_name: str) -> str:
     return ' '.join(tokens) + suffix
 
 
-def _loop_tags(key: str | None) -> list[str]:
-    """Build the tag list for a loop: Type|Loop, Creator|Ablekit, Key tags."""
+def _loop_tags(key: str | None, expansion_name: str) -> list[str]:
+    """Build the tag list for a loop: Type|Loop, Creator|Ablekit, Key, Expansion tags."""
     tags = list(_LOOP_TAGS_BASE)
     if key is not None:
         is_minor = key.endswith('m')
@@ -130,6 +130,7 @@ def _loop_tags(key: str | None) -> list[str]:
         tags.append(f'Key|{letter_acc}')
         if is_minor:
             tags.append('Key|Minor')
+    tags.append(expansion_tag(expansion_name))
     return tags
 
 
@@ -171,7 +172,7 @@ def install_loops(expansion_name: str, kit_name: str, loops: list[Sample],
         # Determine key from stem for tags
         parsed = parse_loop(stem)
         key = parsed[2] if parsed is not None else None
-        tags = _loop_tags(key)
+        tags = _loop_tags(key, expansion_name)
 
         copies.append((sample.path, dest, tags))
 

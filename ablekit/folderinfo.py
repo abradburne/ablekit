@@ -15,6 +15,16 @@ NI_TAG = 'Creator|Native Instruments'
 CREATOR_TAG = 'Creator|Ablekit'
 KIT_TAGS = ['Drums|Drum Kit|Hybrid Kit', NI_TAG, CREATOR_TAG]
 
+
+def expansion_tag(expansion_name: str) -> str:
+    """Tag that lets Live's filter pane group browser items by expansion pack."""
+    return f'Expansion|{expansion_name}'
+
+
+def kit_tags(expansion_name: str) -> list[str]:
+    """Kit tags plus an expansion tag so Live's filter pane can group by pack."""
+    return KIT_TAGS + [expansion_tag(expansion_name)]
+
 ROLE_TAGS: dict[Role, str] = {
     Role.KICK: 'Drums|Kick',
     Role.SNARE: 'Drums|Snare|Snare Hit',
@@ -30,13 +40,15 @@ ROLE_TAGS: dict[Role, str] = {
 }
 
 
-def sample_tags(role: Role) -> list[str]:
+def sample_tags(role: Role, expansion_name: str | None = None) -> list[str]:
     tags = []
     if role in ROLE_TAGS:
         tags.append(ROLE_TAGS[role])
     tags.append('Type|Loop' if role is Role.LOOP else 'Type|One Shot')
     tags.append(NI_TAG)
     tags.append(CREATOR_TAG)
+    if expansion_name is not None:
+        tags.append(expansion_tag(expansion_name))
     return tags
 
 

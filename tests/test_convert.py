@@ -33,6 +33,8 @@ def test_convert_expansion_writes_kit_sidecar(fake_expansion: Path, tmp_path: Pa
     content = sidecar.read_text()
     assert 'Akka Kit.adg' in content
     assert 'About Us Kit.adg' in content
+    # Expansion tag lets the Live browser filter kits by expansion pack
+    assert 'Expansion|Test Library' in content
 
 
 def test_convert_expansion_dry_run_writes_nothing(fake_expansion: Path, tmp_path: Path):

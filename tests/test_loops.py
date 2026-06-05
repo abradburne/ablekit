@@ -118,6 +118,7 @@ def test_install_loops_writes_sidecar_with_type_loop(tmp_path: Path):
     assert 'Creator|Native Instruments' in content
     assert 'Creator|Ablekit' in content
     assert 'Key|E' in content
+    assert 'Expansion|Test Library' in content
 
 
 def test_install_loops_sidecar_minor_key_tags(tmp_path: Path):

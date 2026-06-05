@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from .folderinfo import KIT_TAGS, write_folder_info
+from .folderinfo import kit_tags, write_folder_info
 from .installer import DEFAULT_USER_LIBRARY, KitReport, install_kit
 from .layout import assign_pads
 from .loops import install_loops
@@ -58,7 +58,7 @@ def convert_expansion(exp: Expansion,
         # from kits converted in a prior selective run (sidecar would otherwise overwrite
         # only the kits from THIS run and orphan earlier entries).
         adg_dir = result.kits[0].adg_path.parent
-        items = {p.name: KIT_TAGS for p in sorted(adg_dir.glob('*.adg'))}
+        items = {p.name: kit_tags(exp.name) for p in sorted(adg_dir.glob('*.adg'))}
         write_folder_info(adg_dir, items)
 
     return result

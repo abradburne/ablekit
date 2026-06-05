@@ -51,7 +51,7 @@ def install_kit(expansion_name: str, kit_name: str, pads: list[Pad],
         build_adg(pads, adg_path, sample_paths)
         # Write Live 12 browser tag sidecar so samples appear tagged in the browser
         sidecar_items = {
-            dest.name: sample_tags(pad.sample.role)
+            dest.name: sample_tags(pad.sample.role, expansion_name)
             for pad, (_src, dest) in zip(pads, copies)
         }
         write_folder_info(samples_dir, sidecar_items)
